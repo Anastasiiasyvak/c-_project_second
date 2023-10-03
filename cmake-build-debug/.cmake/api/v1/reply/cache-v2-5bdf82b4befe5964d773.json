@@ -55,7 +55,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/home/nastia/CLionProjects/at_class/cmake-build-debug"
+			"value" : "/home/nastia/CLionProjects/second_assignment/cmake-build-debug"
 		},
 		{
 			"name" : "CMAKE_CACHE_MAJOR_VERSION",
@@ -543,7 +543,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/nastia/CLionProjects/at_class/cmake-build-debug/CMakeFiles/pkgRedirects"
+			"value" : "/home/nastia/CLionProjects/second_assignment/cmake-build-debug/CMakeFiles/pkgRedirects"
 		},
 		{
 			"name" : "CMAKE_GENERATOR",
@@ -603,7 +603,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/home/nastia/CLionProjects/at_class"
+			"value" : "/home/nastia/CLionProjects/second_assignment"
 		},
 		{
 			"name" : "CMAKE_INSTALL_PREFIX",
@@ -1147,7 +1147,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/nastia/CLionProjects/at_class/cmake-build-debug"
+			"value" : "/home/nastia/CLionProjects/second_assignment/cmake-build-debug"
 		},
 		{
 			"name" : "at_class_IS_TOP_LEVEL",
@@ -1171,7 +1171,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/nastia/CLionProjects/at_class"
+			"value" : "/home/nastia/CLionProjects/second_assignment"
 		}
 	],
 	"kind" : "cache",

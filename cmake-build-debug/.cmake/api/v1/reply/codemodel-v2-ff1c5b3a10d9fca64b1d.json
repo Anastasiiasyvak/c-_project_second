@@ -49,8 +49,8 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "/home/nastia/CLionProjects/at_class/cmake-build-debug",
-		"source" : "/home/nastia/CLionProjects/at_class"
+		"build" : "/home/nastia/CLionProjects/second_assignment/cmake-build-debug",
+		"source" : "/home/nastia/CLionProjects/second_assignment"
 	},
 	"version" : 
 	{
