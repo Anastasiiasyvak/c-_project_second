@@ -1,42 +1,46 @@
-#include <iostream> // для std:: count and std cin
-#include <fstream> // для роботи з файлами
-#include <cstring> // для strcpy strcat
+#include <iostream> // для std::count і std::cin
+#include <fstream>  // для роботи з файлами
+#include <cstring>  // для strcpy і strcat
 
-const int MAX_SIZE = 100;
+const int MAX_SIZE = 1000;
 
 class TextEditor {
 private:
-    char* Buffer;
+    char *Buffer;
     bool has_text;
 
 public:
     TextEditor() : Buffer(nullptr), has_text(false) {}
-    ~TextEditor() { // деструктор метод в класі, який створюється перед звільненням буферу
+
+    ~TextEditor() {
         delete[] Buffer;
     }
 
     void TextToAppend() {
-        std::cout << "Enter text to append:";
+        std::cout << "Enter text to append: ";
         char text[MAX_SIZE];
         std::cin.getline(text, MAX_SIZE);
+
         if (!has_text) {
             Buffer = new char[strlen(text) + 1];
             strcpy(Buffer, text);
         } else {
-            char* temp = new char[strlen(Buffer) + strlen(text) + 1];
+            char *temp = new char[strlen(Buffer) + strlen(text) + 2];
             strcpy(temp, Buffer);
             strcat(temp, " ");
             strcat(temp, text);
             delete[] Buffer;
             Buffer = temp;
         }
-        has_text = true;
+
         std::cout << Buffer;
+
+        has_text = true;
     }
 
     void NewLine() {
         strcat(Buffer, "\n");
-        std::cout << "New line is started\n";
+        std::cout << "New line started.\n";
     }
 
     void ForSavingInFile() {
@@ -49,19 +53,20 @@ public:
         if (file.is_open()) {
             file << Buffer;
             file.close();
-            std::cout << "Text has been saved successfully" << std::endl;
+            std::cout << "Text has been saved successfully." << std::endl;
         } else {
-            std::cerr << "Error: Unable to open file for writing" << std::endl;
+            std::cerr << "Error: Unable to open file for writing." << std::endl;
         }
     }
 
     void ForLoadingFromFile() {
         char fileForLoading[MAX_SIZE];
-        std::cout << "Enter the file name for loading:";
+        std::cout << "Enter the file name for loading: ";
         std::cin >> fileForLoading;
         std::ifstream loadFile(fileForLoading);
+
         if (!loadFile) {
-            std::cout << "Error opening file for loading\n";
+            std::cout << "Error opening file for loading." << std::endl;
         } else {
             loadFile.seekg(0, std::ios::end);
             size_t fileSize = loadFile.tellg();
@@ -69,7 +74,7 @@ public:
             Buffer = new char[fileSize + 1];
             loadFile.read(Buffer, fileSize);
             Buffer[fileSize] = '\0';
-            std::cout << "Text has been loaded successfully\n";
+            std::cout << "Text has been loaded successfully." << std::endl;
             loadFile.close();
             has_text = true;
         }
@@ -79,17 +84,18 @@ public:
         std::cout << Buffer;
     }
 
-    void InsertAtIndex(int index1, int index2, const char* wordForAdding) {
-        std::cout << "Choose line and index:";
+    void InsertAtIndex(int index1, int index2, const char *wordForAdding) {
+        std::cout << "Choose line and index: ";
         std::cin >> index1 >> index2;
+        std::cin.ignore(); // Очищаємо буфер введення
         std::cout << "Enter text to insert:\n";
         char text[MAX_SIZE];
-        std::cin.ignore();
         std::cin.getline(text, MAX_SIZE);
 
-        char* lines[20];
+        char *lines[20];
         int num_lines = 0;
-        char* line = strtok(Buffer, "\n");
+        char *line = strtok(Buffer, "\n");
+
         while (line != nullptr) {
             lines[num_lines] = line;
             num_lines++;
@@ -99,39 +105,46 @@ public:
         if (index1 >= 0 && index1 < num_lines && index2 >= 0 && index2 <= strlen(lines[index1])) {
             char new_line[MAX_SIZE];
             strcpy(new_line, lines[index1]);
-            strncpy(new_line + index2, wordForAdding, MAX_SIZE - index2);
+            strncpy(new_line + index2, text, MAX_SIZE - index2);
             strncat(new_line, lines[index1] + index2, MAX_SIZE - strlen(new_line));
 
             delete[] Buffer;
             Buffer = new char[MAX_SIZE];
+
             for (int i = 0; i < num_lines; i++) {
                 if (i == index1) {
                     strncat(Buffer, new_line, MAX_SIZE - strlen(Buffer));
                 } else {
                     strncat(Buffer, lines[i], MAX_SIZE - strlen(Buffer));
                 }
+
                 if (i < num_lines - 1) {
                     strncat(Buffer, "\n", MAX_SIZE - strlen(Buffer));
                 }
             }
+
             std::cout << Buffer;
         } else {
-            std::cout << "Invalid index values\n";
+            std::cout << "Invalid index values." << std::endl;
         }
     }
-
 
     void TextToSearch() {
         std::cout << "Enter text to search: ";
         char search_text[MAX_SIZE];
-        std::cin >> search_text;
+        std::cin.ignore();
+        std::cin.getline(search_text, MAX_SIZE);
+
         int row = 0;
-        char* line = strtok(Buffer, "\n");
+        char *line = strtok(Buffer, "\n");
+
         while (line != nullptr) {
             int position = 0;
-            char* line_start = line;
+            char *line_start = line;
+
             while (1) {
-                char* word_in_line = strstr(line_start, search_text);
+                char *word_in_line = strstr(line_start, search_text);
+
                 if (word_in_line != nullptr) {
                     position = word_in_line - line_start;
                     std::cout << "Text '" << search_text << "' found in line " << row << " at position " << position << std::endl;
@@ -140,11 +153,40 @@ public:
                     break;
                 }
             }
+
             row++;
             line = strtok(nullptr, "\n");
         }
+
         if (row == 0) {
             std::cout << "The word '" << search_text << "' is not found in the Buffer." << std::endl;
+        }
+    }
+
+    void Deletecommand() {
+        int row, index, numSymbols;
+        std::cout << "Choose line, index, and number of symbols: ";
+        std::cin >> row >> index >> numSymbols;
+
+        char *line = strtok(Buffer, "\n");
+        int current_row = 0;
+
+        while (line != nullptr) {
+            if (current_row == row) {
+                int lineLength = strlen(line);
+
+                if (index >= 0 && index < lineLength) {
+                    if (numSymbols > 0) {
+                        if (index + numSymbols <= lineLength) {
+                            memmove(&line[index], &line[index + numSymbols], lineLength - index - numSymbols + 1);
+                            std::cout << "Modified line " << current_row << ": " << line << std::endl;
+                        }
+                    }
+                }
+            }
+
+            current_row++;
+            line = strtok(nullptr, "\n");
         }
     }
 };
@@ -154,7 +196,7 @@ int main() {
 
     while (true) {
         int command;
-        std::cout << "\nChoose the command!\n";
+        std::cout << "\nChoose the command:\n";
         std::cin >> command;
         std::cin.ignore();
 
@@ -183,10 +225,10 @@ int main() {
                 textEditor.TextToSearch();
                 break;
             case 8:
-                system("clear");
+                textEditor.Deletecommand();
                 break;
             default:
-                std::cout << "The command is not implemented\n";
+                std::cout << "The command is not implemented." << std::endl;
                 break;
         }
     }
