@@ -1,27 +1,46 @@
-#include <iostream> // для std::count і std::cin
-#include <fstream>  // для роботи з файлами
-#include <cstring>  // для strcpy і strcat
+#include <iostream>
+#include <fstream>
+#include <cstring>
 #include <stack>
 const int MAX_SIZE = 1000;
+
+class Cursor {
+public:
+    int row;
+    int position;
+
+    Cursor(int startRow, int startPosition) : row(startRow), position(startPosition) {}
+};
 
 class TextEditor {
 private:
     char *Buffer;
     bool has_text;
-    std:: stack<char*> stateStack;
+    std::stack<char*> undoStack;
+    std::stack<char*> redoStack;
+    Cursor cursor;
 
 public:
-    TextEditor() : Buffer(nullptr), has_text(false) {}
+    TextEditor() : Buffer(nullptr), has_text(false), cursor(0, 0) {}
 
     ~TextEditor() {
-        delete[] Buffer;  // деструктор метод в класі, який створюється перед звільненням буферу
+        delete[] Buffer;
     }
 
     char* getBuffer() const {
         return Buffer;
     }
 
+    void moveCursor(int row, int position) {
+        cursor.row = row;
+        cursor.position = position;
+    }
+
+    friend class substringEditor;
+    friend class CutCopyPaste;
+
     void TextToAppend() {
+        undoStack.push(Buffer);
         std::cout << "Enter text to append: ";
         char text[MAX_SIZE];
         std::cin.getline(text, MAX_SIZE);
@@ -34,18 +53,51 @@ public:
             strcpy(temp, Buffer);
             strcat(temp, " ");
             strcat(temp, text);
-            delete[] Buffer;
             Buffer = temp;
         }
-        stateStack.push(Buffer);
+
         std::cout << Buffer;
 
         has_text = true;
     }
 
     void NewLine() {
-        strcat(Buffer, "\n");
-        std::cout << "New line started.\n";
+        undoStack.push(Buffer);
+        char *lines[20];
+        int num_lines = 0;
+        char *line = strtok(Buffer, "\n");
+
+        while (line != nullptr) {
+            lines[num_lines] = line;
+            num_lines++;
+            line = strtok(nullptr, "\n");
+        }
+
+        if (cursor.row >= 0 && cursor.row < num_lines) {
+            char *new_lines = new char[strlen(Buffer) + 2];
+            new_lines[0] = '\0';
+
+            for (int i = 0; i < num_lines; i++) {
+                if (i == cursor.row) {
+                    strcat(new_lines, "\n");
+                }
+
+                strcat(new_lines, lines[i]);
+
+                if (i < num_lines - 1) {
+                    strcat(new_lines, "\n");
+                }
+            }
+
+            delete[] Buffer;
+            Buffer = new_lines;
+            cursor.row++;
+            cursor.position = 0;
+        } else {
+            std::cout << "Invalid cursor position." << std::endl;
+        }
+
+        std::cout << "New line started." << std::endl;
     }
 
     void ForSavingInFile() {
@@ -82,6 +134,8 @@ public:
             std::cout << "Text has been loaded successfully." << std::endl;
             loadFile.close();
             has_text = true;
+            cursor.row = 0;
+            cursor.position = 0;
         }
     }
 
@@ -90,49 +144,49 @@ public:
     }
 
     void Deletecommand() {
-        int row, index, numSymbols;
-        std::cout << "Choose line, index, and number of symbols: ";
-        std::cin >> row >> index >> numSymbols;
-
+        undoStack.push(Buffer);
+        char *lines[20];
+        int num_lines = 0;
         char *line = strtok(Buffer, "\n");
-        int current_row = 0;
 
         while (line != nullptr) {
-            if (current_row == row) {
-                int lineLength = strlen(line);
+            lines[num_lines] = line;
+            num_lines++;
+            line = strtok(nullptr, "\n");
+        }
 
-                if (index >= 0 && index < lineLength) {
-                    if (numSymbols > 0) {
-                        if (index + numSymbols <= lineLength) {
-                            memmove(&line[index], &line[index + numSymbols], lineLength - index - numSymbols + 1);
-                            std::cout << line << std::endl;
+        if (cursor.row >= 0 && cursor.row < num_lines) {
+            char *current_line = lines[cursor.row];
+            int lineLength = strlen(current_line);
 
-                        }
-                    }
+            if (cursor.position >= 0 && cursor.position < lineLength) {
+                int numSymbols = 1;
+
+                if (cursor.position + numSymbols <= lineLength) {
+                    memmove(&current_line[cursor.position], &current_line[cursor.position + numSymbols], lineLength - cursor.position - numSymbols + 1);
+                    std::cout << current_line << std::endl;
                 }
             }
-
-            current_row++;
-            line = strtok(nullptr, "\n");
+        } else {
+            std::cout << "Invalid cursor position." << std::endl;
         }
     }
 
     void Undocommand(){
-        if (!stateStack.empty()){
-            stateStack.pop();
-            if (!stateStack.empty()){
-                Buffer = stateStack.top();
+        if (!undoStack.empty()){
+            undoStack.pop();
+            if (!undoStack.empty()){
+                Buffer = undoStack.top();
             }
         }
     }
-
 };
 
 class substringEditor{
-
 public:
-
-    static void InsertAtIndex(int index1, int index2, const char *wordForAdding,char* Buffer) {
+    static void InsertAtIndex(int index1, int index2, const char *wordForAdding, char* Buffer, TextEditor& textEditor) {
+        std::stack<char*>& undoStack = textEditor.undoStack;
+        undoStack.push(textEditor.getBuffer());
         std::cout << "Choose line and index: ";
         std::cin >> index1 >> index2;
         std::cin.ignore();
@@ -210,17 +264,16 @@ public:
             std::cout << "The word '" << search_text << "' is not found in the Buffer." << std::endl;
         }
     }
-
 };
 
 class CutCopyPaste{
-
 private:
     static char clipboard[MAX_SIZE];
 
 public:
-
-    static void PasteCommand(char* Buffer) {
+    static void PasteCommand(char* Buffer, TextEditor& textEditor) {
+        std::stack<char*>& undoStack = textEditor.undoStack;
+        undoStack.push(textEditor.getBuffer());
         int row, index;
         std::cout << "Choose line and index to paste: ";
         std::cin >> row >> index;
@@ -263,67 +316,76 @@ public:
         }
     }
 
-
-    static void CutCommand(char* Buffer) {
+    static void CutCommand(char* Buffer, TextEditor& textEditor) {
+        std::stack<char*>& undoStack = textEditor.undoStack;
+        undoStack.push(textEditor.getBuffer());
         int row, index, numSymbols;
         std::cout << "Choose line, index, and number of symbols: ";
         std::cin >> row >> index >> numSymbols;
 
+        char *lines[20];
+        int num_lines = 0;
         char *line = strtok(Buffer, "\n");
-        int current_row = 0;
 
         while (line != nullptr) {
-            if (current_row == row) {
-                int lineLength = strlen(line);
+            lines[num_lines] = line;
+            num_lines++;
+            line = strtok(nullptr, "\n");
+        }
 
-                if (index >= 0 && index < lineLength) {
-                    if (numSymbols > 0) {
-                        if (index + numSymbols <= lineLength) {
-                            strncpy(clipboard, &line[index], numSymbols);
-                            clipboard[numSymbols] = '\0';
+        if (row >= 0 && row < num_lines) {
+            char *current_line = lines[row];
+            int lineLength = strlen(current_line);
 
-                            memmove(&line[index], &line[index + numSymbols], lineLength - index - numSymbols + 1);
-                            std::cout << "Cutted Text: " << clipboard << std::endl;
-                        }
+            if (index >= 0 && index < lineLength) {
+                if (numSymbols > 0) {
+                    if (index + numSymbols <= lineLength) {
+                        strncpy(clipboard, &current_line[index], numSymbols);
+                        clipboard[numSymbols] = '\0';
+
+                        memmove(&current_line[index], &current_line[index + numSymbols], lineLength - index - numSymbols + 1);
+                        std::cout << "Cutted Text: " << clipboard << std::endl;
                     }
                 }
             }
-
-            current_row++;
-            line = strtok(nullptr, "\n");
+        } else {
+            std::cout << "Invalid index values." << std::endl;
         }
     }
-
 
     static void CopyCommand(char* Buffer) {
         int row, index, numSymbols;
         std::cout << "Choose line, index, and number of symbols: ";
         std::cin >> row >> index >> numSymbols;
 
+        char *lines[20];
+        int num_lines = 0;
         char *line = strtok(Buffer, "\n");
-        int current_row = 0;
 
         while (line != nullptr) {
-            if (current_row == row) {
-                int lineLength = strlen(line);
+            lines[num_lines] = line;
+            num_lines++;
+            line = strtok(nullptr, "\n");
+        }
 
-                if (index >= 0 && index < lineLength) {
-                    if (numSymbols > 0) {
-                        if (index + numSymbols <= lineLength) {
-                            strncpy(clipboard, &line[index], numSymbols);
-                            clipboard[numSymbols] = '\0';
+        if (row >= 0 && row < num_lines) {
+            char *current_line = lines[row];
+            int lineLength = strlen(current_line);
 
-                            std::cout << "Copied Text: " << clipboard << std::endl;
-                        }
+            if (index >= 0 && index < lineLength) {
+                if (numSymbols > 0) {
+                    if (index + numSymbols <= lineLength) {
+                        strncpy(clipboard, &current_line[index], numSymbols);
+                        clipboard[numSymbols] = '\0';
+
+                        std::cout << "Copied Text: " << clipboard << std::endl;
                     }
                 }
             }
-
-            current_row++;
-            line = strtok(nullptr, "\n");
+        } else {
+            std::cout << "Invalid index values." << std::endl;
         }
     }
-
 };
 
 char CutCopyPaste::clipboard[MAX_SIZE] = "";
@@ -341,26 +403,33 @@ int main() {
             case 1:
                 textEditor.TextToAppend();
                 break;
+
             case 2:
                 textEditor.NewLine();
                 break;
+
             case 3:
                 textEditor.ForSavingInFile();
                 break;
+
             case 4:
                 textEditor.ForLoadingFromFile();
                 break;
+
             case 5:
                 textEditor.PrintLoadedText();
                 break;
+
             case 6:
                 int index1, index2;
                 char wordForAdding[MAX_SIZE];
-                substringEditor::InsertAtIndex(index1, index2, wordForAdding, textEditor.getBuffer());
+                substringEditor::InsertAtIndex(index1, index2, wordForAdding, textEditor.getBuffer(), textEditor);
                 break;
+
             case 7:
                 substringEditor::TextToSearch(textEditor.getBuffer());
                 break;
+
             case 8:
                 textEditor.Deletecommand();
                 break;
@@ -370,16 +439,15 @@ int main() {
                 break;
 
             case 11:
-                CutCopyPaste:: CutCommand(textEditor.getBuffer());
+                CutCopyPaste::CutCommand(textEditor.getBuffer(), textEditor);
                 break;
 
             case 12:
-                CutCopyPaste:: PasteCommand(textEditor.getBuffer());
+                CutCopyPaste::PasteCommand(textEditor.getBuffer(), textEditor);
                 break;
 
-
             case 13:
-                CutCopyPaste:: CopyCommand(textEditor.getBuffer());
+                CutCopyPaste::CopyCommand(textEditor.getBuffer());
                 break;
 
             default:
@@ -387,4 +455,6 @@ int main() {
                 break;
         }
     }
+
+    return 0;
 }
